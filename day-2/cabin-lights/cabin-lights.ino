@@ -67,7 +67,7 @@ void setup() {
  */
 void loop() {
   digitalWrite(CABIN_LIGHTS_PIN, HIGH);  // This line turns the lander's light ON.
-  delay(1000);                           // Wait for one second (1000 milliseconds) with the light ON.
+  delay(2000);                           // Wait for one second (1000 milliseconds) with the light ON.
   digitalWrite(CABIN_LIGHTS_PIN, LOW);   // This line turns the lander's light OFF.
   delay(100);                            // Wait for a tenth of a second (100 milliseconds) with the light OFF.
 }
