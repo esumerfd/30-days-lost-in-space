@@ -29,7 +29,7 @@ void loop() {
 
   Serial.print("darkest: ");
   Serial.print(darkest_light);
-  Serial.print(", Light: ");
+  Serial.print(", light: ");
   Serial.print(light_value);
   Serial.print(", brighest: ");
   Serial.print(brightest_light);
