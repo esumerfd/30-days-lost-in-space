@@ -29,7 +29,7 @@ void lightOff() {
 void loop() {
   int light = analogRead(A0);
   
-  if (light > NIGHT_LEVEL) lightOn();
+  if (light < NIGHT_LEVEL) lightOn();
   else lightOff();
 
   delay(1000);
