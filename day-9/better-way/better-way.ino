@@ -7,6 +7,7 @@ const byte GREEN_PIN = 10;
 const byte BLUE_PIN = 9;
 
 const unsigned long BATTERY_CAPACITY = 50000;
+const unsigned long BATTERY_DRAIN = 1;
 
 void displayColor(byte red_intensity, byte green_intensity, byte blue_intensity) {
   analogWrite(RED_PIN, red_intensity);
@@ -50,6 +51,10 @@ void log(float percentage) {
   Serial.println(percentage);
 }
 
+void drain() {
+  battery_level =- BATTERY_DRAIN;
+}
+
 void loop() {
   float percentage = batteryMeter();
 
@@ -57,6 +62,8 @@ void loop() {
   else if (medium(percentage)) displayColor(128, 80, 0);
   else if (low(percentage))    displayColor(128, 0, 0);
   else                         displayColor(0, 0, 0);
+
+  drain();
 
   log(percentage);
 
