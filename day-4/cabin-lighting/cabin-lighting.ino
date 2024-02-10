@@ -1,4 +1,4 @@
-#include "Arduino.h"  // include information about our HERO
+#include "Arduino.h"
 
 #define CABIN_LIGHT_PIN   10
 #define STORAGE_LIGHT_PIN 11
