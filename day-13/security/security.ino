@@ -61,10 +61,14 @@ char getKey() {
 }
 
 void login() {
+  if (!validatePIN()) return;
+
   Serial.println("Welcome, authorized user. You may now begin using the system.");
 }
 
 void changePin() {
+  if (!validatePIN()) return;
+
   Serial.println("Welcome, authorized user. Please Enter a new PIN: ");
 
   char button_character;
@@ -82,9 +86,7 @@ void changePin() {
 void loop() {
   char button_character = getKey();
 
-  if (validatePIN()) {
-    if      (button_character == '#') changePin();
-    else if (button_character == '*') login();
-  }
+  if      (button_character == '#') changePin();
+  else if (button_character == '*') login();
 }
 
