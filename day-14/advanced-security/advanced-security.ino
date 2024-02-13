@@ -105,7 +105,7 @@ void renderPinChanged() {
   ledGreen();
 }
 
-void renderPinChanged() {
+void renderLoggedOut() {
   log("Logged out");
   sound(500);
   ledRed();
@@ -203,7 +203,7 @@ void actionLogin(char keyPress) {
 void actionLogout(char keyPress) {
   log("Logged out");
   currentKeyMap = keyMapPreLogin;
-  renderLoggedout();
+  renderLoggedOut();
 }
 
 int findAction(char keyPress) {
