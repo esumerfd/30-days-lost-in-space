@@ -99,6 +99,11 @@ void renderFail() {
   ledRed();
 }
 
+void renderLogin() {
+  sound(880);
+  ledBlue();
+}
+
 void renderChangingPin() {
   sound(880);
   ledBlue();
@@ -211,6 +216,7 @@ void actionLogin(char keyPress) {
   log("Enter PIN: ");
   secretIndex = 0;
   currentKeyMap = keyMapPin;
+  renderLogin();
 }
 
 void actionLogout(char keyPress) {
