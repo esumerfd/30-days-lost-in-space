@@ -27,22 +27,12 @@ const byte RED_PIN = 11;    // PWM pin controlling the red leg of our RGB LED
 const byte GREEN_PIN = 10;  // PWM pin ccontrolling the green leg of our RGB LED
 const byte BLUE_PIN = 9;    // PWM pin ccontrolling the blue leg of our RGB LED
 
-void setup() {
-  Serial.begin(9600);  // Begin monitoring via the serial monitor
-
-  pinMode(RED_PIN, OUTPUT);
-  pinMode(GREEN_PIN, OUTPUT);
-  pinMode(BLUE_PIN, OUTPUT);
-
-  ledRed();
-}
-
 void log(const char* format, ...)
 {
   char buffer[100];
   va_list args;
   va_start(args, format);
-  sprintf(buffer, format, args);
+  vsnprintf(buffer, sizeof(buffer), format, args);
   va_end(args);
 
   Serial.println(buffer);
@@ -68,8 +58,16 @@ void ledRed() {
   ledColor(128, 0, 0);
 }
 
+void ledBlue() {
+  ledColor(0, 0, 128);
+}
+
 void ledYellow() {
   ledColor(128, 80, 0);
+}
+
+void ledGreen() {
+  ledColor(0, 128, 0);
 }
 
 void sound(int pitch) {
@@ -86,6 +84,31 @@ void sound(int pitch) {
 void renderLoggedIn() {
   log("Logged In");
   sound(880);
+  ledGreen();
+}
+
+void renderFail() {
+  log("Failed");
+  sound(100);
+  ledRed();
+}
+
+void renderChangingPin() {
+  log("Changing Pin");
+  sound(300);
+  ledBlue();
+}
+
+void renderPinChanged() {
+  log("Pin Changed");
+  sound(500);
+  ledGreen();
+}
+
+void renderPinChanged() {
+  log("Logged out");
+  sound(500);
+  ledRed();
 }
 
 char getKey() {
@@ -97,93 +120,134 @@ struct Action {
   void (*act)(char keyPress);
 };
 
-Action actionsPreLogin[] = {
+const int MAX_KEYMAP = 5;
+
+Action *currentKeyMap;
+
+Action keyMapPreLogin[] = {
   { '*', actionLogin },
   { ' ', actionNone },
 };
 
-Action actionsPin[] = {
+Action keyMapPin[] = {
   { '#', actionLogout },
   { ' ', actionPin },
 };
 
-Action actionsChangePin[] = {
-  { '*', actionChangePin },
+Action keyMapChangingPin[] = {
   { '#', actionLogout },
-  { ' ', actionNone },
+  { ' ', actionChangingPin },
 };
 
-Action actionsPostLogin[] = {
-  { '*', actionChangePin },
+Action keyMapPostLogin[] = {
+  { '*', actionStartPinChange },
   { '#', actionLogout },
-  { ' ', actionNone },
+  { ' ', actionDoingStuff },
 };
-
-Action *currentActions = actionsPreLogin;
-
-void actionNone(char keyPress) {
-  log("none");
-}
 
 static char secret[4] = { '0', '0', '0', '0' };
+static char inputBuffer[4] = { '0', '0', '0', '0' };
 static int secretIndex = 0;
 
+void actionNone(char keyPress) {
+  log("nothing to do: %c", (char)keyPress);
+}
+
+void actionChangingPin(char pinChar) {
+  //log("CHANGE PIN:%c, secretIndex:%d, secretChar: %c", (char)pinChar, secretIndex, (char)inputBuffer[secretIndex]);
+
+  inputBuffer[secretIndex] = pinChar;
+  secretIndex++;
+  if (secretIndex >= sizeof(inputBuffer)) {
+    strncpy(secret, inputBuffer, sizeof(secret));
+    currentKeyMap = keyMapPostLogin;
+
+    renderPinChanged();
+  }
+}
+
+void actionStartPinChange(char keyPress) {
+  secretIndex = 0;
+  currentKeyMap = keyMapChangingPin;
+
+  renderChangingPin();
+}
+
+void actionDoingStuff(char keyPress) {
+  log("Diagnosing the ship: %c.", (char)keyPress);
+}
+
 void actionPin(char pinChar) {
-  log("PIN:%d, secretIndex:%d, secretChar: %d", pinChar, secretIndex, secret[secretIndex]);
+  //log("PIN:%c, secretIndex:%d, secretChar: %c", (char)pinChar, secretIndex, (char)secret[secretIndex]);
 
-  if (secret[secretIndex] == pinChar) {
-    secretIndex++;
-    if (secretIndex >= sizeof(secret)) {
-      currentActions = actionsPostLogin;
-
+  inputBuffer[secretIndex] = pinChar;
+  secretIndex++;
+  if (secretIndex >= sizeof(inputBuffer)) {
+    if (0 == strncmp(secret, inputBuffer, sizeof(secret))) {
+      currentKeyMap = keyMapPostLogin;
       renderLoggedIn();
     }
-  }
-  else {
-    currentActions = actionsPreLogin;
+    else {
+      currentKeyMap = keyMapPreLogin;
+      renderFail();
+    }
   }
 }
 
 void actionLogin(char keyPress) {
-  log("login");
+  log("Enter PIN:");
   secretIndex = 0;
-  currentActions = actionsPin;
+  currentKeyMap = keyMapPin;
 }
 
 void actionLogout(char keyPress) {
-  log("logout");
-  currentActions = actionsPreLogin;
-}
-
-void actionChangePin(char keyPress) {
-  log("change pin");
+  log("Logged out");
+  currentKeyMap = keyMapPreLogin;
+  renderLoggedout();
 }
 
 int findAction(char keyPress) {
   int actIndex = -1;
 
-  for (int index = 0; index < sizeof(currentActions); index++) {
-    if (keyPress == currentActions[index].keyPress) {
+  int index = 0;
+  for (index = 0; currentKeyMap[index].keyPress != ' ' && index < MAX_KEYMAP; index++) {
+    if (keyPress == currentKeyMap[index].keyPress) {
       actIndex = index;
       break;
     }
   }
 
-  if (actIndex == -1 && keyPress != ' ') {
-    actIndex = findAction(' ');
+  if (actIndex == -1 && currentKeyMap[index].keyPress == ' ') {
+    actIndex = index;
   }
 
   return actIndex;
 }
 
-void loop() {
-  char keyPress = getKey();
+void processKey(char keyPress) {
   int actionIndex = findAction(keyPress);
   if (actionIndex < 0) {
-    Serial.println("oops, no action");
+    log("oops, no action configured: %c", (char)keyPress);
   }
   else {
-    currentActions[actionIndex].act(keyPress);
+    currentKeyMap[actionIndex].act(keyPress);
   }
+}
+
+void setup() {
+  Serial.begin(9600);  // Begin monitoring via the serial monitor
+
+  pinMode(RED_PIN, OUTPUT);
+  pinMode(GREEN_PIN, OUTPUT);
+  pinMode(BLUE_PIN, OUTPUT);
+
+  currentKeyMap = keyMapPreLogin;
+
+  ledRed();
+}
+
+void loop() {
+  char keyPress = getKey();
+  processKey(keyPress);
 }
 
