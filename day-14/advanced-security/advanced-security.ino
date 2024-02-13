@@ -35,7 +35,7 @@ void log(const char* format, ...)
   vsnprintf(buffer, sizeof(buffer), format, args);
   va_end(args);
 
-  Serial.println(buffer);
+  Serial.print(buffer);
 }
 
 void ledColors(byte colors[3]) {
@@ -81,32 +81,36 @@ void sound(int pitch) {
   ledColor(colors[0], colors[1], colors[2]);
 }
 
+void renderStartup() {
+  delay(200);
+  log("Welcome.\n* to Login.\n* to change pin\n# to Logout.\n");
+  ledRed();
+}
+
 void renderLoggedIn() {
-  log("Logged In");
+  log("Logged In\n");
   sound(880);
   ledGreen();
 }
 
 void renderFail() {
-  log("Failed");
+  log("Failed\n");
   sound(100);
   ledRed();
 }
 
 void renderChangingPin() {
-  log("Changing Pin");
-  sound(300);
+  sound(880);
   ledBlue();
 }
 
 void renderPinChanged() {
-  log("Pin Changed");
+  log("Pin Changed\n");
   sound(500);
   ledGreen();
 }
 
 void renderLoggedOut() {
-  log("Logged out");
   sound(500);
   ledRed();
 }
@@ -150,15 +154,19 @@ static char inputBuffer[4] = { '0', '0', '0', '0' };
 static int secretIndex = 0;
 
 void actionNone(char keyPress) {
-  log("nothing to do: %c", (char)keyPress);
+  //log("nothing to do: %c\n", (char)keyPress);
 }
 
 void actionChangingPin(char pinChar) {
-  //log("CHANGE PIN:%c, secretIndex:%d, secretChar: %c", (char)pinChar, secretIndex, (char)inputBuffer[secretIndex]);
+  //log("CHANGE PIN:%c, secretIndex:%d, secretChar: %c\n", (char)pinChar, secretIndex, (char)inputBuffer[secretIndex]);
+
+  log("*");
 
   inputBuffer[secretIndex] = pinChar;
   secretIndex++;
   if (secretIndex >= sizeof(inputBuffer)) {
+    log("\n");
+
     strncpy(secret, inputBuffer, sizeof(secret));
     currentKeyMap = keyMapPostLogin;
 
@@ -167,6 +175,7 @@ void actionChangingPin(char pinChar) {
 }
 
 void actionStartPinChange(char keyPress) {
+  log("New PIN: ");
   secretIndex = 0;
   currentKeyMap = keyMapChangingPin;
 
@@ -174,15 +183,19 @@ void actionStartPinChange(char keyPress) {
 }
 
 void actionDoingStuff(char keyPress) {
-  log("Diagnosing the ship: %c.", (char)keyPress);
+  log("Diagnosing the ship: %c.\n", (char)keyPress);
 }
 
 void actionPin(char pinChar) {
-  //log("PIN:%c, secretIndex:%d, secretChar: %c", (char)pinChar, secretIndex, (char)secret[secretIndex]);
+  //log("PIN:%c, secretIndex:%d, secretChar: %c\n", (char)pinChar, secretIndex, (char)secret[secretIndex]);
+
+  log("*");
 
   inputBuffer[secretIndex] = pinChar;
   secretIndex++;
   if (secretIndex >= sizeof(inputBuffer)) {
+
+    log("\n");
     if (0 == strncmp(secret, inputBuffer, sizeof(secret))) {
       currentKeyMap = keyMapPostLogin;
       renderLoggedIn();
@@ -195,13 +208,13 @@ void actionPin(char pinChar) {
 }
 
 void actionLogin(char keyPress) {
-  log("Enter PIN:");
+  log("Enter PIN: ");
   secretIndex = 0;
   currentKeyMap = keyMapPin;
 }
 
 void actionLogout(char keyPress) {
-  log("Logged out");
+  log("Logged out\n");
   currentKeyMap = keyMapPreLogin;
   renderLoggedOut();
 }
@@ -227,7 +240,7 @@ int findAction(char keyPress) {
 void processKey(char keyPress) {
   int actionIndex = findAction(keyPress);
   if (actionIndex < 0) {
-    log("oops, no action configured: %c", (char)keyPress);
+    log("oops, no action configured: %c\n", (char)keyPress);
   }
   else {
     currentKeyMap[actionIndex].act(keyPress);
@@ -243,7 +256,7 @@ void setup() {
 
   currentKeyMap = keyMapPreLogin;
 
-  ledRed();
+  renderStartup();
 }
 
 void loop() {
