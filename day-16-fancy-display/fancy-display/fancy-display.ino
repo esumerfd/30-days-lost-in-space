@@ -12,16 +12,6 @@ const byte DIO_PIN = 5;
 // Create display object of type TM1637Display:
 TM1637Display lander_display = TM1637Display(CLK_PIN, DIO_PIN);
 
-/*
- * The TM1637 library takes an array of 4 bytes to represent each of the 4 display
- * digits.  Within each byte, bit 0 is segment A, bit 1 is segment B etc.  A zero
- * indicates the segment is off, a 1 bit indicates the segment is on.
- *
- * NOTE: To show the individual bits in each byte we will use BINARY number notation
- *       consisting of a "0b" followed by eight bits that can be either 0 or 1 (ex.
- *       0b01010101).
- */
-
 // Create array that turns all segments on:
 const byte all_on[] = { 0b11111111,
                         0b11111111,
@@ -42,17 +32,6 @@ const byte all_on[] = { 0b11111111,
  * The TM1637 library provides constants for each segment on the display.  If you hover
  * your mouse over each of these constants you can see that each defines a byte with only
  * one bit set to 1.  SEG_A = 0b00000001, SEG_B = 0b00000010, etc.
- *
- * The Arduino C++ language uses the '|' operator to do a "bitwise or" between values.  It
- * takes each corresponding bits in two values and the output is 1 if *either* or both of the
- * corresponding bits is 1.  If both corresponding bits are 0 then the corresponding bit is
- * set to 0.
- *
- * In other words:
- * 0  0  1  1    operand1
- * 0  1  0  1    operand2
- * ----------
- * 0  1  1  1    (operand1 | operand2) - returned result
  */
 
  // By turning on selected segments we can display *some* alphabetic characters.
@@ -78,27 +57,6 @@ void loop() {
   lander_display.clear();
   delay(1000);
 
-  /*
-   *
-   * Microwave after a power outage
-   * Blinking 12:00.  The .showNumberDecEx() function has an additional parameter to turn
-   * on the ':' after the 2nd digit.  This works well for time displays.
-   *
-   * The second parameter can also be used to control dots between digits if the
-   * display has them.  In our case, the HERO display only has the colon.
-   *
-   * Dot/Colon enable. The argument is a bitmask, with each bit corresponding to a dot
-   *        between the digits (or colon mark, as implemented by each module). i.e.
-   *        For displays with dots between each digit:
-   *        * 0.000 (0b10000000)
-   *        * 00.00 (0b01000000)
-   *        * 000.0 (0b00100000)
-   *        * 0.0.0.0 (0b11100000)
-   *        For displays with just a colon:     <== This is true for the HERO display
-   *        * 00:00 (0b01000000)
-   *        For displays with dots and colons colon:
-   *        * 0.0:0.0 (0b11100000)
-   */
   for (int i = 0; i < 4; i++) {
     lander_display.showNumberDecEx(1200, 0b01000000);
     delay(500);
@@ -106,16 +64,12 @@ void loop() {
     delay(500);
   }
 
-  // Show counter including negative sign for negative numbers
-  // NOTE: negative numbers cannot be less than -999 since the negative sign
-  //       uses the left most digit of the display.
   for (int i = -100; i <= 100; i++) {
     lander_display.showNumberDec(i);
     delay(50);
   }
   delay(1000);
 
-  // Clear the display (all segments off)
   lander_display.clear();
   delay(1000);
 
