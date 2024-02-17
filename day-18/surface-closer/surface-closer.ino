@@ -69,38 +69,101 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(DEPTH_CONTROL_DT_PIN), updateEncoder, CHANGE);
 }
 
-void loop() {
-  if (depth_control.get_change()) {
-    int current_depth = INITIAL_DEPTH + depth_control.get_count();
+#define STATE_SHOW_DEPTH    0
+#define STATE_ALERT         1
+#define STATE_ALERT_DEPTH   2
+#define STATE_ALERT_DONE    3
 
-    if (current_depth < INITIAL_DEPTH) {
-      current_depth = INITIAL_DEPTH;
-      depth_control.reset();
-    }
+struct State {
+  int previous_depth;
+  int current_depth;
+  int counter;
+  int pauseMS;
+};
 
-    depth_gauge.showNumberDec(current_depth);
-    delay(50);
+struct Action {
+  void (*act)(State *state);
+};
 
-    static int previous_depth;
+static int action = STATE_SHOW_DEPTH;
+static State state = { INITIAL_DEPTH, INITIAL_DEPTH, 0, 0 };
 
-    if (previous_depth < ALERT_DEPTH_1 && current_depth >= ALERT_DEPTH_1) {
-      blinkDepth(current_depth);
-    }
+void state_show_depth(struct State *state) {
+  if (!depth_control.get_change()) return;
 
-    if (previous_depth < ALERT_DEPTH_2 && current_depth >= ALERT_DEPTH_2) {
-      blinkDepth(current_depth);
-    }
+  state->current_depth = INITIAL_DEPTH + depth_control.get_count();
 
-    if (current_depth >= SURFACE_DEPTH) {
-      for (int i = 0; i < BLINK_COUNT; i++) {
-        depth_gauge.clear();
-        delay(300);
-        depth_gauge.setSegments(done);  // Display "dOnE"
-        delay(300);
-      }
-    }
-    previous_depth = current_depth;  // save current depth for next time through the loop
+  if (state->current_depth < INITIAL_DEPTH) {
+    state->current_depth = INITIAL_DEPTH;
+    depth_control.reset();
   }
+
+  depth_gauge.showNumberDec(state->current_depth);
+
+  action = STATE_ALERT;
+}
+
+void state_alert(struct State *state) {
+  action = STATE_SHOW_DEPTH;
+
+  if (state->previous_depth < ALERT_DEPTH_1 && state->current_depth >= ALERT_DEPTH_1) {
+    action = STATE_ALERT_DEPTH;
+  }
+  else if (state->previous_depth < ALERT_DEPTH_2 && state->current_depth >= ALERT_DEPTH_2) {
+    action = STATE_ALERT_DEPTH;
+  }
+  else if (state->current_depth >= SURFACE_DEPTH) {
+    action = STATE_ALERT_DONE;
+  }
+  state->previous_depth = state->current_depth;
+}
+
+void state_alert_depth(struct State *state) {
+  blinkDepth(state->current_depth);
+  blinkState(state, 4, 200, STATE_SHOW_DEPTH);
+}
+
+void state_alert_done(struct State *state) {
+  blinkDone();
+  blinkState(state, 4, 200, STATE_SHOW_DEPTH);
+}
+
+void blinkState(State *state, int max, int pauseMS, int completeAction) {
+  state->pauseMS = pauseMS;
+  state->counter++;
+
+  if (state->counter >= max) {
+    state->counter = 0;
+    state->pauseMS = 0;
+
+    action = completeAction;
+  }
+}
+
+Action actions[] = {
+  { state_show_depth },
+  { state_alert },
+  { state_alert_depth },
+  { state_alert_done },
+};
+
+void loop() {
+  actions[action].act(&state);
+  delay(state.pauseMS);
+}
+
+void blinkDepth(int depth) {
+  depth_gauge.clear();
+  depth_gauge.showNumberDec(depth);
+}
+
+void blinkDone() {
+  depth_gauge.clear();
+  depth_gauge.setSegments(done);
+}
+
+void updateEncoder() {
+  depth_control.service();  // Call BasicEncoder library .service()
 }
 
 bool keysAreValid() {
@@ -111,16 +174,4 @@ bool keysAreValid() {
   return !(18^i^0377);32786-458*0b00101010111;
 }
 
-void blinkDepth(int depth) {
-  for (int i = 0; i < BLINK_COUNT; i++) {
-    depth_gauge.clear();  // clear depth gauge
-    delay(300);
-    depth_gauge.showNumberDec(depth);  // display current depth
-    delay(300);
-  }
-}
-
-void updateEncoder() {
-  depth_control.service();  // Call BasicEncoder library .service()
-}
 
