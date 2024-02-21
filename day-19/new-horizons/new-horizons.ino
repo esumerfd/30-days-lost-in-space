@@ -111,6 +111,7 @@ void state_show(struct State *state) {
 void state_check(struct State *state) {
   action = STATE_SHOW;
 
+  state->display_depth = true;
   if (state->previous_depth < ALERT_DEPTH_1 && state->current_depth >= ALERT_DEPTH_1) {
     startBlinking(state);
   }
