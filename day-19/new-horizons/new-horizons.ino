@@ -17,6 +17,8 @@ BasicEncoder depth_control(DEPTH_CONTROL_CLK_PIN, DEPTH_CONTROL_DT_PIN);
 const byte DEPTH_GAUGE_CLK_PIN = 6;
 const byte DEPTH_GAUGE_DIO_PIN = 5;
 
+const byte BUZZER_PIN = 10;
+
 TM1637Display depth_gauge = TM1637Display(DEPTH_GAUGE_CLK_PIN, DEPTH_GAUGE_DIO_PIN);
 
 const byte BLINK_COUNT = 10;
@@ -155,6 +157,7 @@ void showDepth(State *state) {
 
   if (state->blinking && !state->blink_on) {
     depth_gauge.clear();
+    tone(BUZZER_PIN, 800, 10);
   }
   else {
     depth_gauge.showNumberDec(state->current_depth);
