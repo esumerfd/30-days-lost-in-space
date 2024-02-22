@@ -136,23 +136,24 @@ void state_show(struct State *state) {
 }
 
 void state_check(struct State *state) {
-  byte rise_percentage = 100 - ((state->current_depth * 100) / INITIAL_DEPTH);
-  if (rise_percentage <= 0) {
-  }
-
   state->showState = SHOW_STATE_DEPTH;
 
   int rise_rate = state->current_depth - state->previous_depth;
+
+  byte rise_percentage = 100 - ((state->current_depth * 100) / INITIAL_DEPTH);
+  rise_percentage = min(rise_percentage, 100);
+
+  log("perc %d, rate %d\n", rise_percentage, rise_rate);
   if (rise_rate > 1) {
     startHold(state);
   }
-  else if (state->previous_depth < ALERT_DEPTH_1 && state->current_depth >= ALERT_DEPTH_1) {
+  else if (rise_percentage == 50 ) {
     startBlinking(state);
   }
-  else if (state->previous_depth < ALERT_DEPTH_2 && state->current_depth >= ALERT_DEPTH_2) {
+  else if (rise_percentage == 70 ) {
     startBlinking(state);
   }
-  else if (state->current_depth >= SURFACE_DEPTH) {
+  else if (rise_percentage >= 100) {
     state->showState = SHOW_STATE_DONE;
   }
 
@@ -179,16 +180,6 @@ void startBlinking(State *state) {
   state->pauseMS = 20;
 }
 
-void startHold(State *state) {
-  state->showState = SHOW_STATE_HOLD;      
-
-  state->blinking = true;
-  state->blink_on = true;
-  state->blink_counter = BLINK_COUNT;
-  state->buzzer_freq = BUZZER_HOLD;
-  state->pauseMS = 20;
-}
-
 void checkBlinking(State *state) {
   if (!state->blinking) return;
 
@@ -200,6 +191,16 @@ void checkBlinking(State *state) {
     state->pauseMS = 0;
     state->showState = SHOW_STATE_DEPTH;
   }
+}
+
+void startHold(State *state) {
+  state->showState = SHOW_STATE_HOLD;      
+
+  state->blinking = true;
+  state->blink_on = true;
+  state->blink_counter = BLINK_COUNT;
+  state->buzzer_freq = BUZZER_HOLD;
+  state->pauseMS = 20;
 }
 
 void showDepth(State *state) {
