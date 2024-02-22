@@ -24,13 +24,6 @@ TM1637Display depth_gauge = TM1637Display(DEPTH_GAUGE_CLK_PIN, DEPTH_GAUGE_DIO_P
 const byte BLINK_COUNT = 10;
 
 // You can set the individual segments per digit to spell words or create other symbols:
-const byte zeros[] = {
-  SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F,
-  SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F,
-  SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F,
-  SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F
-};
-
 const byte done[] = {
   SEG_B | SEG_C | SEG_D | SEG_E | SEG_G,          // d
   SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F,  // O
@@ -45,11 +38,28 @@ const byte nope[] = {
   SEG_A | SEG_D | SEG_E | SEG_F | SEG_G           // E
 };
 
+const byte hold[] = {
+  SEG_B | SEG_C | SEG_E | SEG_F | SEG_G,  // H
+  SEG_C | SEG_D | SEG_E | SEG_G,          // o
+  SEG_D | SEG_E | SEG_F,                  // L
+  SEG_B | SEG_C | SEG_D | SEG_E | SEG_G,  // d
+};
+
 const int INITIAL_DEPTH = -60;
 
 const int ALERT_DEPTH_1 = -40;  // First alert depth
 const int ALERT_DEPTH_2 = -20;  // Second alert depth
 const int SURFACE_DEPTH = 0;    // Depth of the sea surface
+
+void log(const char* format, ...) {
+  char buffer[100];
+  va_list args;
+  va_start(args, format);
+  vsnprintf(buffer, sizeof(buffer), format, args);
+  va_end(args);
+
+  Serial.print(buffer);
+}
 
 void setup() {
   Serial.begin(9600);
@@ -73,6 +83,13 @@ void setup() {
 #define STATE_SHOW          0
 #define STATE_CHECK         1
 
+#define SHOW_STATE_DEPTH    1
+#define SHOW_STATE_HOLD     2
+#define SHOW_STATE_DONE     3
+
+#define BUZZER_HOLD         500
+#define BUZZER_MILESTONE    1000
+
 struct State {
   // depth and rate tracking
   int previous_depth;
@@ -82,8 +99,9 @@ struct State {
   bool blink_on;
   int blink_counter;
   int pauseMS;
+  int buzzer_freq;
   // Display
-  bool display_depth;
+  int showState;
 };
 
 struct Action {
@@ -91,7 +109,7 @@ struct Action {
 };
 
 static int action = STATE_SHOW;
-static State state = { INITIAL_DEPTH, INITIAL_DEPTH, false, true, BLINK_COUNT, 0, true };
+static State state = { INITIAL_DEPTH, INITIAL_DEPTH, false, true, BLINK_COUNT, 0, BUZZER_MILESTONE, SHOW_STATE_DEPTH };
 
 void state_show(struct State *state) {
   if (!depth_control.get_change() && !state->blinking) return;
@@ -102,26 +120,45 @@ void state_show(struct State *state) {
     depth_control.reset();
   }
 
-  if (state->display_depth) showDepth(state);
-  else                      showDone();
+  switch(state->showState) {
+  case SHOW_STATE_DEPTH:
+    showDepth(state);
+    break;
+  case SHOW_STATE_HOLD:
+    showHold(state);
+    break;
+  case SHOW_STATE_DONE:
+    showDone(state);
+    break;
+  }
 
   action = STATE_CHECK;
 }
 
 void state_check(struct State *state) {
-  action = STATE_SHOW;
+  byte rise_percentage = 100 - ((state->current_depth * 100) / INITIAL_DEPTH);
+  if (rise_percentage <= 0) {
+  }
 
-  state->display_depth = true;
-  if (state->previous_depth < ALERT_DEPTH_1 && state->current_depth >= ALERT_DEPTH_1) {
+  state->showState = SHOW_STATE_DEPTH;
+
+  int rise_rate = state->current_depth - state->previous_depth;
+  if (rise_rate > 1) {
+    startHold(state);
+  }
+  else if (state->previous_depth < ALERT_DEPTH_1 && state->current_depth >= ALERT_DEPTH_1) {
     startBlinking(state);
   }
   else if (state->previous_depth < ALERT_DEPTH_2 && state->current_depth >= ALERT_DEPTH_2) {
     startBlinking(state);
   }
   else if (state->current_depth >= SURFACE_DEPTH) {
-    state->display_depth = false;
+    state->showState = SHOW_STATE_DONE;
   }
+
   state->previous_depth = state->current_depth;
+
+  action = STATE_SHOW;
 }
 
 Action actions[] = {
@@ -138,6 +175,17 @@ void startBlinking(State *state) {
   state->blinking = true;
   state->blink_on = true;
   state->blink_counter = BLINK_COUNT;
+  state->buzzer_freq = BUZZER_MILESTONE;
+  state->pauseMS = 20;
+}
+
+void startHold(State *state) {
+  state->showState = SHOW_STATE_HOLD;      
+
+  state->blinking = true;
+  state->blink_on = true;
+  state->blink_counter = BLINK_COUNT;
+  state->buzzer_freq = BUZZER_HOLD;
   state->pauseMS = 20;
 }
 
@@ -150,6 +198,7 @@ void checkBlinking(State *state) {
   if (state->blink_counter < 0) {
     state->blinking = false;
     state->pauseMS = 0;
+    state->showState = SHOW_STATE_DEPTH;
   }
 }
 
@@ -158,14 +207,19 @@ void showDepth(State *state) {
 
   if (state->blinking && !state->blink_on) {
     depth_gauge.clear();
-    tone(BUZZER_PIN, 800, 10);
+    tone(BUZZER_PIN, state->buzzer_freq, 10);
   }
   else {
     depth_gauge.showNumberDec(state->current_depth);
   }
 }
 
-void showDone() {
+void showHold(State *state) {
+  depth_gauge.clear();
+  depth_gauge.setSegments(hold);
+}
+
+void showDone(State *state) {
   depth_gauge.clear();
   depth_gauge.setSegments(done);
 }
