@@ -1,5 +1,5 @@
 #include "Arduino.h"
-#include <U8g2lib.h>  // Include file for the U8g2 library.
+#include <U8g2lib.h>
 
 U8G2_SH1106_128X64_NONAME_F_HW_I2C lander_display(U8G2_R0, /* reset=*/U8X8_PIN_NONE);
 
