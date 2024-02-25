@@ -5,12 +5,13 @@ U8G2_SH1106_128X64_NONAME_F_HW_I2C lander_display(U8G2_R0, /* reset=*/U8X8_PIN_N
 
 class Display {
   public:
-    byte font_height;
+    byte _font_height;
+    bool _blink_on = true;
 
     void begin() {
       lander_display.begin();
       lander_display.setFont(u8g2_font_ncenB08_tr);
-      font_height = lander_display.getMaxCharHeight();
+      _font_height = lander_display.getMaxCharHeight();
     }
 
     void render() {
@@ -18,16 +19,15 @@ class Display {
       lander_display.setFontPosTop();
 
       drawCenteredString(0, "Exploration Lander");
-      drawCenteredString(font_height, "Hello World!");
+      drawCenteredString(_font_height, "Hello World!");
 
-      static bool blink_on = true;
-      if (blink_on) {
-        byte centered_y = (font_height * 2) + ((lander_display.getDisplayHeight() - (font_height * 2)) / 2);
+      if (_blink_on) {
+        byte centered_y = (_font_height * 2) + ((lander_display.getDisplayHeight() - (_font_height * 2)) / 2);
         lander_display.setFontPosCenter();
         drawCenteredString(centered_y, "Stand by");
       }
 
-      blink_on = !blink_on;
+      _blink_on = !_blink_on;
 
       lander_display.sendBuffer();
     }
