@@ -7,36 +7,38 @@ class Display {
   public:
     byte _font_height;
     bool _blink_on = true;
+    int _displayWidth;
 
     void begin() {
       lander_display.begin();
       lander_display.setFont(u8g2_font_ncenB08_tr);
+
       _font_height = lander_display.getMaxCharHeight();
+      _displayWidth = lander_display.getDisplayWidth();
     }
 
     void render() {
-      lander_display.clearBuffer();
-      lander_display.setFontPosTop();
+      clear();
+      drawCenteredText(0, "Exploration Lander");
+      drawCenteredText(1, "Hello World!");
 
-      drawCenteredString(0, "Exploration Lander");
-      drawCenteredString(_font_height, "Hello World!");
-
-      if (_blink_on) {
-        byte centered_y = (_font_height * 2) + ((lander_display.getDisplayHeight() - (_font_height * 2)) / 2);
-        lander_display.setFontPosCenter();
-        drawCenteredString(centered_y, "Stand by");
+      if (_blink_on = !_blink_on) {
+        drawCenteredText(3, "Stand by");
       }
-
-      _blink_on = !_blink_on;
 
       lander_display.sendBuffer();
     }
 
-    private:
-      void drawCenteredString(byte y, char *string) {
-        byte centered_x = (lander_display.getDisplayWidth() - lander_display.getStrWidth(string)) / 2;
-        lander_display.drawStr(centered_x, y, string);
-      }
+  private:
+    void clear() {
+      lander_display.clearBuffer();
+      lander_display.setFontPosTop();
+    }
+
+    void drawCenteredText(int line, char *text) {
+      byte text_offset_x = (_displayWidth - lander_display.getStrWidth(text)) / 2;
+      lander_display.drawStr(text_offset_x, line * _font_height, text);
+    }
 };
 
 static Display *display;
