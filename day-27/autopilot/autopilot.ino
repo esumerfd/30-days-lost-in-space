@@ -51,9 +51,10 @@ void loop(void) {
   switch_value |= (digitalRead(SWITCH_BIT_1_PIN) == HIGH ? 1 : 0) << 1;
   switch_value |= (digitalRead(SWITCH_BIT_2_PIN) == HIGH ? 1 : 0) << 2;
 
-  Log::print("Switches: %d %d %d\n", 0x04&switch_value, 0x02&switch_value, 0x01&switch_value);
+  int value = (100*((0x04&switch_value)>>2)) + (10*((0x02&switch_value)>>1)) + (0x01&switch_value);
+  Log::println("Switches: %03d", value);
 
-  bitmap_number_display.showNumberDecEx(switch_value);
+  bitmap_number_display.showNumberDecEx(value);
 
   lander_display.firstPage();
   do {
